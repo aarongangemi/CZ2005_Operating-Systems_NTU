@@ -42,14 +42,16 @@ void UpdateTLB(int possible_badVAddr)
 
 int VpnToPhyPage(int vpn)
 {
-  int phyPage;
+  int phyPage = 0;
   int i;
   bool entryFound = false;
+  printf("VPNToPhyPage:\n");
   for(i = 0; i < NumPhysPages; i++)               
   {
         if(memoryTable[i].valid && memoryTable[i].pid == currentThread->pid && memoryTable[i].vPage == vpn)
         {
                 phyPage = i;
+		printf("Valid Entry - index: %d\n",i);
                 entryFound = true;
                 break;
         }
@@ -57,6 +59,17 @@ int VpnToPhyPage(int vpn)
   if(!entryFound)
   {
         phyPage = -1;
+	printf("No valid entry was found\n");
+  }
+  printf("---IPT Table---\n");
+  for(int j = 0; j < NumPhysPages;j++)
+  {
+        printf("IPT[%d]: pid: %d vpn: %d Last Used: %d valid: %d\n",j, memoryTable[j].pid, memoryTable[j].vPage,memoryTable[j].lastUsed,memoryTable[j].valid);
+  }
+  printf("---TLB Table---\n");
+  for(int j = 0; j < TLBSize;j++)
+  {
+        printf("TLB[%d]: vpn: %d phys: %d valid: %d\n",j,machine->tlb[j].virtualPage,machine->tlb[j].physicalPage,machine->tlb[j].valid);
   }
   return phyPage;
   //your code here to get a physical frame for page vpn
@@ -69,10 +82,11 @@ int VpnToPhyPage(int vpn)
 //    replacement
 //----------------------------------------------------------------------
 
+static int FIFOPointer = 0;
 void InsertToTLB(int vpn, int phyPage)
 {
-  static int FIFOPointer = 0;
-  int i = 0; //entry in the TLB
+  int i = 0;
+  int j;
   int physPage;
   bool found = false;
   //your code to find an empty in TLB or to replace the oldest entry if TLB is full
@@ -82,6 +96,7 @@ void InsertToTLB(int vpn, int phyPage)
 	{
 		physPage = i;
 		found = true;
+		break;
 	}
 	i++;
   }
@@ -89,10 +104,8 @@ void InsertToTLB(int vpn, int phyPage)
   {
 	i = FIFOPointer;
   }
-
   FIFOPointer = (i + 1) % TLBSize;
 
-					 
   // copy dirty data to memoryTable
   if(machine->tlb[i].valid){
     memoryTable[machine->tlb[i].physicalPage].dirty=machine->tlb[i].dirty;
@@ -245,6 +258,7 @@ int lruAlgorithm(void)
   int i = 0;
   int lastPageUsed;
   bool invalidPageFound = false;
+  printf("LRU Algorithm\n");
   while(i < NumPhysPages && !invalidPageFound)
   {
 	if(!memoryTable[i].valid)
@@ -257,16 +271,16 @@ int lruAlgorithm(void)
   if(!invalidPageFound)
   {
 	lastPageUsed = memoryTable[0].lastUsed;
-	for(i = 0; i < NumPhysPages; i++)
-	{
+  	for(i = 0; i < NumPhysPages;i++)
+  	{	
 		if(memoryTable[i].lastUsed < lastPageUsed)
 		{
 			lastPageUsed = memoryTable[i].lastUsed;
 			phyPage = i;
 		}
-	}	 		
-  	return phyPage;
+	}	 
   }
+  return phyPage;
 }
 
 //----------------------------------------------------------------------
